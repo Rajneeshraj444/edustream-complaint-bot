@@ -34,8 +34,8 @@ ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID", "5915871770"))
 ) = range(5)
 
 # Available batches and subjects
-BATCHES = ["Batch A", "Batch B", "Batch C"]
-SUBJECTS = ["Math", "Physics", "Chemistry", "Biology", "Computer Science"]
+BATCHES = ["Master quest 2.0 2025", "master quest 2026", "Ace ipm crash course"]
+SUBJECTS = ["Quant", "DILR", "VARC", "Current Affairs" ]
 
 # Status options for admin
 STATUS_OPTIONS = ["Send", "Seen", "Approved", "Resolved"]
@@ -57,7 +57,7 @@ def get_user_data(user_id, key=None):
     """Get user data from the global dictionary"""
     if user_id not in user_data_store:
         return None if key else {}
-    
+
     if key:
         return user_data_store[user_id].get(key)
     return user_data_store[user_id]
@@ -72,7 +72,7 @@ def create_complaint(user_id, username, batch, subject, lecture_name, photo_file
     """Create a new complaint and store it"""
     global complaint_counter
     complaint_counter += 1
-    
+
     complaint_id = f"complaint_{complaint_counter}"
     complaint_data = {
         'id': complaint_id,
@@ -85,7 +85,7 @@ def create_complaint(user_id, username, batch, subject, lecture_name, photo_file
         'status': 'submitted',
         'created_at': None
     }
-    
+
     complaint_store[complaint_id] = complaint_data
     logger.info(f"Created complaint {complaint_id} for user {user_id}")
     return complaint_id
@@ -167,14 +167,14 @@ def get_back_to_batch_keyboard():
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Handle /start command"""
     user = update.effective_user
-    
+
     # Clear any existing user data
     clear_user_data(user.id)
-    
+
     welcome_message = f"""
 👋 Welcome {user.first_name}!
 
-I'm here to help you submit complaints about lectures. 
+I'm here to help you submit complaints about lectures.
 
 Please follow these steps:
 1️⃣ Select your batch
@@ -184,80 +184,80 @@ Please follow these steps:
 
 Let's start by selecting your batch:
 """
-    
+
     await update.message.reply_text(
         welcome_message,
         reply_markup=get_batch_keyboard()
     )
-    
+
     return BATCH_SELECTION
 
 async def batch_selection_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Handle batch selection"""
     query = update.callback_query
     await query.answer()
-    
+
     user = update.effective_user
-    
+
     if query.data == "restart":
         await query.message.reply_text(
             "🔄 Starting over. Please select your batch:",
             reply_markup=get_batch_keyboard()
         )
         return BATCH_SELECTION
-    
+
     if query.data.startswith("batch_"):
         batch = query.data.replace("batch_", "").replace("_", " ")
         store_user_data(user.id, 'batch', batch)
-        
+
         await query.message.reply_text(
             f"✅ Batch selected: **{batch}**\n\nNow please select the subject:",
             reply_markup=get_subject_keyboard(),
             parse_mode='Markdown'
         )
-        
+
         return SUBJECT_SELECTION
-    
+
     return BATCH_SELECTION
 
 async def subject_selection_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Handle subject selection"""
     query = update.callback_query
     await query.answer()
-    
+
     user = update.effective_user
-    
+
     if query.data.startswith("subject_"):
         subject = query.data.replace("subject_", "").replace("_", " ")
         store_user_data(user.id, 'subject', subject)
-        
+
         user_data = get_user_data(user.id)
-        
+
         await query.message.reply_text(
             f"✅ Subject selected: **{subject}**\n"
             f"📚 Batch: {user_data.get('batch')}\n\n"
             f"Now please type the **lecture name** in the chat:",
             parse_mode='Markdown'
         )
-        
+
         return LECTURE_NAME_INPUT
-    
+
     return SUBJECT_SELECTION
 
 async def lecture_name_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Handle lecture name input"""
     user = update.effective_user
     lecture_name = update.message.text.strip()
-    
+
     if not lecture_name:
         await update.message.reply_text(
             "❌ Please enter a valid lecture name:"
         )
         return LECTURE_NAME_INPUT
-    
+
     store_user_data(user.id, 'lecture_name', lecture_name)
     user_data = get_user_data(user.id)
-    
+
     summary_message = f"""
 ✅ **Lecture name saved:** {lecture_name}
 
@@ -268,31 +268,31 @@ async def lecture_name_handler(update: Update, context: ContextTypes.DEFAULT_TYP
 
 📸 Now please send a **screenshot** (image file) related to your complaint:
 """
-    
+
     await update.message.reply_text(
         summary_message,
         parse_mode='Markdown'
     )
-    
+
     return SCREENSHOT_UPLOAD
 
 async def screenshot_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Handle screenshot upload"""
     user = update.effective_user
-    
+
     if not update.message.photo:
         await update.message.reply_text(
             "❌ Please send an image file (screenshot). Other file types are not accepted."
         )
         return SCREENSHOT_UPLOAD
-    
+
     # Get the largest photo size
     photo = update.message.photo[-1]
     photo_file_id = photo.file_id
-    
+
     # Get user data
     user_data = get_user_data(user.id)
-    
+
     # Create complaint
     complaint_id = create_complaint(
         user_id=user.id,
@@ -302,10 +302,10 @@ async def screenshot_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         lecture_name=user_data.get('lecture_name'),
         photo_file_id=photo_file_id
     )
-    
+
     # Store complaint ID for user
     store_user_data(user.id, 'complaint_id', complaint_id)
-    
+
     # Send confirmation to user
     await update.message.reply_text(
         f"✅ **Complaint submitted successfully!**\n\n"
@@ -316,42 +316,42 @@ async def screenshot_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         f"Thank you for your feedback! 🙏",
         parse_mode='Markdown'
     )
-    
+
     # Forward complaint to admin
     await send_complaint_to_admin(context, complaint_id)
-    
+
     # Clear user data
     clear_user_data(user.id)
-    
+
     return ConversationHandler.END
 
 async def send_complaint_to_admin(context: ContextTypes.DEFAULT_TYPE, complaint_id: str):
     """Send complaint to admin chat"""
     complaint_data = get_complaint(complaint_id)
-    
+
     if not complaint_data:
         logger.error(f"Complaint {complaint_id} not found")
         return
-    
+
     try:
         # Send photo to admin
         await context.bot.send_photo(
             chat_id=ADMIN_CHAT_ID,
             photo=complaint_data['photo_file_id']
         )
-        
+
         # Send complaint details with status buttons
         message = format_complaint_message(complaint_data)
-        
+
         await context.bot.send_message(
             chat_id=ADMIN_CHAT_ID,
             text=message,
             reply_markup=get_status_keyboard(complaint_id),
             parse_mode='Markdown'
         )
-        
+
         logger.info(f"Complaint {complaint_id} sent to admin")
-        
+
     except Exception as e:
         logger.error(f"Error sending complaint to admin: {e}")
 
@@ -359,29 +359,29 @@ async def admin_status_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     """Handle admin status updates"""
     query = update.callback_query
     user = update.effective_user
-    
+
     # Check if user is admin
     if not is_admin(user.id):
         await query.answer("❌ You are not authorized to perform this action.", show_alert=True)
         return
-    
+
     await query.answer()
-    
+
     if query.data.startswith("status_"):
         parts = query.data.split("_")
         if len(parts) >= 3:
             complaint_id = "_".join(parts[1:-1])  # Handle complaint IDs with underscores
             new_status = parts[-1]
-            
+
             complaint_data = get_complaint(complaint_id)
-            
+
             if not complaint_data:
                 await query.message.reply_text("❌ Complaint not found.")
                 return
-            
+
             # Update complaint status
             update_complaint_status(complaint_id, new_status)
-            
+
             # Notify user about status change
             try:
                 status_message = f"""
@@ -396,18 +396,18 @@ Your complaint about:
 
 Thank you for your patience! 🙏
 """
-                
+
                 await context.bot.send_message(
                     chat_id=complaint_data['user_id'],
                     text=status_message,
                     parse_mode='Markdown'
                 )
-                
+
                 # Update admin message
                 try:
                     updated_complaint = get_complaint(complaint_id)
                     updated_message = format_complaint_message(updated_complaint)
-                    
+
                     await query.edit_message_text(
                         text=updated_message,
                         reply_markup=get_status_keyboard(complaint_id),
@@ -420,9 +420,9 @@ Thank you for your patience! 🙏
                             f"✅ Status updated to: {new_status.title()}\n"
                             f"User has been notified."
                         )
-                
+
                 logger.info(f"Admin updated complaint {complaint_id} status to {new_status}")
-                
+
             except Exception as e:
                 logger.error(f"Error notifying user about status change: {e}")
                 await query.message.reply_text(
@@ -434,14 +434,14 @@ async def cancel_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     """Handle conversation cancellation"""
     user = update.effective_user
     clear_user_data(user.id)
-    
+
     await update.message.reply_text(
         "❌ **Complaint submission cancelled.**\n\n"
         "You can start again anytime by using /start command.\n\n"
         "Thank you! 🙏",
         parse_mode='Markdown'
     )
-    
+
     return ConversationHandler.END
 
 async def unknown_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -457,10 +457,10 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 
 def main():
     """Main function to start the bot"""
-    
+
     # Create application
     application = Application.builder().token(BOT_TOKEN).build()
-    
+
     # Create conversation handler for complaint submission
     conversation_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start_command)],
@@ -485,21 +485,21 @@ def main():
         ],
         allow_reentry=True
     )
-    
+
     # Add handlers
     application.add_handler(conversation_handler)
     application.add_handler(CallbackQueryHandler(admin_status_handler, pattern="^status_"))
     application.add_handler(MessageHandler(filters.COMMAND, unknown_handler))
-    
+
     # Add error handler
     application.add_error_handler(error_handler)
-    
+
     # Start the bot
     logger.info("Starting Complaint Submission Bot...")
     print("🤖 Complaint Submission Bot is starting...")
     print(f"📱 Bot Token: {BOT_TOKEN[:10]}...")
     print("🚀 Bot is running! Press Ctrl+C to stop.")
-    
+
     application.run_polling(
         allowed_updates=["message", "callback_query"],
         drop_pending_updates=True
