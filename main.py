@@ -21,8 +21,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Bot configuration
-BOT_TOKEN = os.getenv("BOT_TOKEN", "your_bot_token_here")
-ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID", "123456789"))
+BOT_TOKEN = os.getenv("BOT_TOKEN", "8099043757:AAENjgM164FuPLbE10GJH0AFWTOir2RLgoY")
+ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID", "5915871770"))
 
 # Conversation states
 (
